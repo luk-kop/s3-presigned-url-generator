@@ -23,15 +23,6 @@ def check_bucket(bucket_name: str) -> bool:
     return False
 
 
-def get_buckets_list() -> list:
-    """
-    Returns a list of all buckets owned by the authenticated sender of the request.
-    """
-    s3_client = boto3.client('s3')
-    s3_buckets = s3_client.list_buckets()['Buckets']
-    return [bucket.get('Name') for bucket in s3_buckets]
-
-
 def create_presigned_url(bucket_name: str, object_name:str , expiration: str = 3600) -> Union[str, None]:
     """
     Generate a presigned URL to share an S3 object
