@@ -1,17 +1,25 @@
-import logging
 from typing import Union
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def check_bucket_exist(bucket_name: str) -> bool:
+def check_bucket(bucket_name: str) -> bool:
     """
-    Checks whether the bucket exists.
+    Determine whether a bucket exists and you have permission to access it.
     """
-    buckets = get_buckets_list()
-    if bucket_name in buckets:
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.head_bucket(Bucket=bucket_name)
         return True
+    except ClientError as error:
+        error_code = error.response['Error']['Code']
+        if error_code == '404':
+            print(f'Bucket {bucket_name} does not exist')
+        elif error_code == '403':
+            print(f'You do not have permission to access {bucket_name} bucket')
+        else:
+            print('An error has occurred')
     return False
 
 
@@ -36,8 +44,8 @@ def create_presigned_url(bucket_name: str, object_name:str , expiration: str = 3
                                                         'Key': object_name
                                                     },
                                                     ExpiresIn=expiration)
-    except ClientError as err:
-        logging.error(err)
+    except ClientError as error:
+        print(error)
         return None
     return response
 
@@ -47,8 +55,8 @@ if __name__ == '__main__':
     s3_bucket_name = 'test-pre-bucket'
     s3_object_name = 'test-object'
 
-    # Check if bucket exist for authenticated user
-    bucket_exist = check_bucket_exist(bucket_name=s3_bucket_name)
+    # Check whether bucket exist and authenticated user has permissions to access it
+    bucket_exist = check_bucket(bucket_name=s3_bucket_name)
 
     if bucket_exist:
         url = create_presigned_url(bucket_name=s3_bucket_name, object_name=s3_object_name)
