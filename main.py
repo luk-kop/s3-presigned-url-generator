@@ -4,43 +4,35 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def check_bucket(bucket_name: str) -> bool:
+def check_s3_data(bucket_name: str, object_key: str) -> bool:
     """
-    Determine whether a bucket exists and you have permission to access it.
-    """
-    s3_client = boto3.client('s3')
-    try:
-        response = s3_client.head_bucket(Bucket=bucket_name)
-        return True
-    except ClientError as error:
-        error_code = error.response['Error']['Code']
-        if error_code == '404':
-            print(f'Bucket {bucket_name} does not exist')
-        elif error_code == '403':
-            print(f'You do not have permission to access {bucket_name} bucket')
-        else:
-            print('An error has occurred')
-    return False
-
-
-def check_object(bucket_name: str, object_key: str) -> bool:
-    """
-    Determine whether a object exists and you have permission to access it.
+    Determine whether bucket and object exist and you have permission to access them.
     """
     s3_client = boto3.client('s3')
+    # Supplementary dict to determine which item (bucket or object) exception relates to.
+    checked_item = {
+        'type': 'bucket',
+        'name': bucket_name
+    }
     try:
-        response = s3_client.head_object(
+        # Check whether bucket exist and authenticated user has permissions to access it
+        s3_client.head_bucket(
+            Bucket=bucket_name
+        )
+        # Check whether object in bucket exist and authenticated user has permissions to access it
+        checked_item['type'], checked_item['name']= 'object', object_key
+        s3_client.head_object(
             Bucket=bucket_name,
             Key=object_key
         )
         return True
     except ClientError as error:
-        print(error)
         error_code = error.response['Error']['Code']
+        item_type, item_name = checked_item['type'], checked_item['name']
         if error_code == '404':
-            print(f'Object {object_key} does not exist')
+            print(f'{item_type.capitalize()} {item_name} does not exist')
         elif error_code == '403':
-            print(f'You do not have permission to access {object_key} object')
+            print(f'You do not have permission to access {item_name} {item_type}')
         else:
             print('An error has occurred')
     return False
@@ -69,10 +61,9 @@ if __name__ == '__main__':
     s3_bucket_name = 'test-pre-bucket'
     s3_object_name = 'test-object'
 
-    # Check whether bucket exist and authenticated user has permissions to access it
-    bucket_exist = check_bucket(bucket_name=s3_bucket_name)
-    object_exist = check_object(bucket_name=s3_bucket_name, object_key=s3_object_name)
+    # Check whether bucket and object exist and authenticated user has permissions to access them.
+    s3_data_correct = check_s3_data(bucket_name=s3_bucket_name, object_key=s3_object_name)
 
-    if bucket_exist and object_exist:
+    if s3_data_correct:
         url = create_presigned_url(bucket_name=s3_bucket_name, object_name=s3_object_name)
         print(f'URL = {url}')
