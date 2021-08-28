@@ -1,4 +1,5 @@
 from typing import Union
+from datetime import datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError
@@ -38,18 +39,22 @@ def check_s3_data(bucket_name: str, object_key: str) -> bool:
     return False
 
 
-def create_presigned_url(bucket_name: str, object_name:str , expiration: str = 3600) -> Union[str, None]:
+def create_presigned_url(bucket_name: str, object_name:str, expiration_time: str = 60) -> Union[str, None]:
     """
-    Generate a presigned URL to share an S3 object
+    Generate a presigned URL to share an S3 object.
     """
     s3_client = boto3.client('s3')
+    # Expiration time in seconds
+    expiration_time = expiration_time * 60
     try:
-        response = s3_client.generate_presigned_url('get_object',
-                                                    Params={
-                                                        'Bucket': bucket_name,
-                                                        'Key': object_name
-                                                    },
-                                                    ExpiresIn=expiration)
+        response = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': bucket_name,
+                'Key': object_name
+            },
+            ExpiresIn=expiration_time
+        )
     except ClientError as error:
         print(error)
         return None
@@ -60,10 +65,19 @@ if __name__ == '__main__':
 
     s3_bucket_name = 'test-pre-bucket'
     s3_object_name = 'test-object'
+    # Expiration time in minutes
+    url_expiration_time = 5
 
     # Check whether bucket and object exist and authenticated user has permissions to access them.
-    s3_data_correct = check_s3_data(bucket_name=s3_bucket_name, object_key=s3_object_name)
+    s3_data_correct = check_s3_data(bucket_name=s3_bucket_name,
+                                    object_key=s3_object_name)
 
     if s3_data_correct:
-        url = create_presigned_url(bucket_name=s3_bucket_name, object_name=s3_object_name)
+        url = create_presigned_url(bucket_name=s3_bucket_name,
+                                   object_name=s3_object_name,
+                                   expiration_time=url_expiration_time)
+        valid_time = datetime.now() + timedelta(minutes=url_expiration_time)
+        # Time in format: 28-Aug-2021 06:03:46
+        valid_time_str = valid_time.strftime('%d-%b-%Y %H:%M:%S')
         print(f'URL = {url}')
+        print(f'Valid until = {valid_time_str} ({url_expiration_time} minutes)')
