@@ -3,6 +3,7 @@
 from typing import Union
 from datetime import datetime, timedelta
 import argparse
+import logging
 
 import boto3
 from botocore.exceptions import ClientError
@@ -34,11 +35,11 @@ def check_s3_data(bucket_name: str, object_key: str) -> bool:
         error_code = error.response['Error']['Code']
         item_type, item_name = checked_item['type'], checked_item['name']
         if error_code == '404':
-            print(f'Error: {item_type.capitalize()} {item_name} does not exist')
+            logging.error(f'{item_type.capitalize()} {item_name} does not exist')
         elif error_code == '403':
-            print(f'Error: You do not have permission to access {item_name} {item_type}')
+            logging.error(f'You do not have permission to access {item_name} {item_type}')
         else:
-            print('Error: An error has occurred')
+            logging.error('An error has occurred')
     return False
 
 
@@ -59,12 +60,16 @@ def create_presigned_url(bucket_name: str, object_name:str, expiration_time: str
             ExpiresIn=expiration_time
         )
     except ClientError as error:
-        print(error)
+        logging.error(error)
         return None
     return response
 
 
 if __name__ == '__main__':
+    # Logging config
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.WARNING)
+
+    # Argparse config
     parser = argparse.ArgumentParser(description='The script generates S3 object presigned URL')
     parser.add_argument('-b', '--bucket', required=True, help='S3 bucket name')
     parser.add_argument('-o', '--object', required=True, help='S3 object key')
